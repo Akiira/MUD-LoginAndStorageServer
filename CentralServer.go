@@ -23,19 +23,19 @@ func main() {
 
 	readServerList()
 
-	runCharacterServer()
-	//runClientServer()
+	go runCharacterServer()
+	runClientServer()
 }
 
 func runCharacterServer() {
 	listener := setUpServerWithAddress(servers["characterStorage"])
 
 	for {
-		fmt.Println("Character Server: i'm waiting")
+		fmt.Println("\tCharacter Server: i'm waiting")
 		conn, err := listener.Accept()
 		//checkError(err)
 		if err == nil {
-			fmt.Println("Character Server:Connection established")
+			fmt.Println("\tCharacter Server:Connection established")
 			sendCharacterFile(conn)
 			conn.Close()
 		}
@@ -79,8 +79,8 @@ func HandleLoginClient(myConn net.Conn) {
 	err := gob.NewDecoder(myConn).Decode(&clientResponse)
 	checkError(err)
 
-	if _, err := os.Stat("Passwords/" + clientResponse.getUsername()); err == nil {
-		file, err := os.Open("Passwords/" + clientResponse.getUsername())
+	if _, err := os.Stat("Characters/Passwords/" + clientResponse.getUsername() + ".txt"); err == nil {
+		file, err := os.Open("Characters/Passwords/" + clientResponse.getUsername() + ".txt")
 		checkError(err)
 
 		reader := bufio.NewReader(file)
@@ -90,14 +90,17 @@ func HandleLoginClient(myConn net.Conn) {
 		s := strings.Split(string(line), " ")
 
 		if s[PASSWORD] == clientResponse.getPassword() {
-			gob.NewEncoder(myConn).Encode(newServerMessage(REDIRECT, s[ADDRESS]))
+			newAddress := servers[s[ADDRESS]]
+			gob.NewEncoder(myConn).Encode(newServerMessage(REDIRECT, newAddress))
 		} else {
 			//TODO
 			//Incorrect password
+			fmt.Println("\tERROR: incorrect password")
 		}
 	} else {
 		//TODO
 		//Character not found
+		fmt.Println("\tERROR: character not found")
 	}
 
 	myConn.Close()
