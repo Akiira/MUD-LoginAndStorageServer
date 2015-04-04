@@ -29,14 +29,24 @@ func main() {
 
 func runCharacterServer() {
 	listener := setUpServerWithAddress(servers["characterStorage"])
+	fmt.Println("\tCharacter Server: i'm waiting")
 
 	for {
-		fmt.Println("\tCharacter Server: i'm waiting")
 		conn, err := listener.Accept()
-		//checkError(err)
+		checkError(err)
 		if err == nil {
 			fmt.Println("\tCharacter Server:Connection established")
-			sendCharacterFile(conn)
+			var msg ServerMessage
+			err := gob.NewDecoder(conn).Decode(&msg)
+			checkError(err)
+			fmt.Println(msg)
+
+			if msg.MsgType == GETFILE {
+				sendCharacterFile(conn, msg.getMessage())
+			} else {
+				saveCharacterFile(conn, msg.getMessage())
+			}
+
 			conn.Close()
 		}
 	}
@@ -56,19 +66,23 @@ func runClientServer() {
 	}
 }
 
-func sendCharacterFile(conn net.Conn) {
-	var msg ServerMessage
-	err := gob.NewDecoder(conn).Decode(&msg)
-	checkError(err)
-	fmt.Println(msg)
-
-	name := msg.Value[0].Value
+func sendCharacterFile(conn net.Conn, name string) {
 
 	file, err := os.Open("Characters/" + name + ".xml")
 	checkError(err)
 	defer file.Close()
 
 	_, err = io.Copy(conn, file)
+	checkError(err)
+}
+
+func saveCharacterFile(conn net.Conn, name string) {
+
+	file, err := os.Open("Characters/" + name + ".xml")
+	checkError(err)
+	defer file.Close()
+
+	_, err = io.Copy(file, conn)
 	checkError(err)
 }
 
