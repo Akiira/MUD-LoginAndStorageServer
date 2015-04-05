@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -39,7 +40,6 @@ func runCharacterServer() {
 			var msg ServerMessage
 			err := gob.NewDecoder(conn).Decode(&msg)
 			checkError(err)
-			fmt.Println(msg)
 
 			if msg.MsgType == GETFILE {
 				sendCharacterFile(conn, msg.getMessage())
@@ -47,7 +47,6 @@ func runCharacterServer() {
 				saveCharacterFile(conn, msg.getMessage())
 			}
 
-			conn.Close()
 		}
 	}
 }
@@ -67,27 +66,31 @@ func runClientServer() {
 }
 
 func sendCharacterFile(conn net.Conn, name string) {
-
+	defer conn.Close()
 	file, err := os.Open("Characters/" + name + ".xml")
 	checkError(err)
 	defer file.Close()
 
-	_, err = io.Copy(conn, file)
+	written, err := io.Copy(conn, file)
 	checkError(err)
+	fmt.Println("Amount Written: ", written)
 }
 
 func saveCharacterFile(conn net.Conn, name string) {
-
-	file, err := os.Open("Characters/" + name + ".xml")
+	defer conn.Close()
+	file, err := os.Create("Characters/" + name + ".xml")
 	checkError(err)
 	defer file.Close()
 
-	_, err = io.Copy(file, conn)
-	checkError(err)
+	buf := new(bytes.Buffer)
+	buf.Grow(10000)
+	written, err := io.CopyN(buf, conn, 10000)
+	fmt.Println("Amount Written: ", written)
+
+	file.Write(buf.Bytes())
 }
 
 func HandleLoginClient(myConn net.Conn) {
-
 	var clientResponse ClientMessage
 
 	err := gob.NewDecoder(myConn).Decode(&clientResponse)

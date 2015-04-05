@@ -12,8 +12,8 @@ const (
 )
 
 type ServerMessage struct {
-	MsgType int
 	Value   []FormattedString
+	MsgType int
 }
 
 func newServerMessage(typeOfMsg int, msg string) ServerMessage {
@@ -21,7 +21,7 @@ func newServerMessage(typeOfMsg int, msg string) ServerMessage {
 }
 
 func (msg *ServerMessage) getMessage() string {
-	if len(msg.Value) == 0 {
+	if len(msg.Value) <= 0 {
 		return ""
 	}
 	return msg.Value[0].Value
