@@ -2,11 +2,10 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/gob"
 	"encoding/xml"
 	"fmt"
-	"io"
+	_ "io"
 	"io/ioutil"
 	"log"
 	"net"
