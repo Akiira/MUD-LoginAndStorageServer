@@ -9,6 +9,7 @@ const (
 	REDIRECT = 1
 	GETFILE  = 2
 	SAVEFILE = 3
+	GAMEPLAY = 4
 )
 
 type ServerMessage struct {
@@ -16,8 +17,20 @@ type ServerMessage struct {
 	MsgType int
 }
 
-func newServerMessage(typeOfMsg int, msg string) ServerMessage {
-	return ServerMessage{MsgType: typeOfMsg, Value: newFormattedString(msg)}
+func newServerMessageFS(msgs []FormattedString) ServerMessage {
+	return ServerMessage{MsgType: GAMEPLAY, Value: msgs}
+}
+
+func newServerMessageS(msg string) ServerMessage {
+	return ServerMessage{MsgType: GAMEPLAY, Value: newFormattedStringSplice(msg)}
+}
+
+func newServerMessageTypeFS(typeOfMsg int, msgs []FormattedString) ServerMessage {
+	return ServerMessage{MsgType: typeOfMsg, Value: msgs}
+}
+
+func newServerMessageTypeS(typeOfMsg int, msg string) ServerMessage {
+	return ServerMessage{MsgType: typeOfMsg, Value: newFormattedStringSplice(msg)}
 }
 
 func (msg *ServerMessage) getMessage() string {

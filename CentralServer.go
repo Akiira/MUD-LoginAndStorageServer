@@ -118,7 +118,7 @@ func HandleLoginClient(myConn net.Conn) {
 
 		if s[PASSWORD] == clientResponse.getPassword() {
 			newAddress := servers[s[ADDRESS]]
-			gob.NewEncoder(myConn).Encode(newServerMessage(REDIRECT, newAddress))
+			gob.NewEncoder(myConn).Encode(newServerMessageTypeS(REDIRECT, newAddress))
 		} else {
 			//TODO
 			//Incorrect password
