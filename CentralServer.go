@@ -2,11 +2,9 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/gob"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -46,11 +44,13 @@ func runCharacterServer() {
 			checkError(err)
 
 			if msg.MsgType == GETFILE {
-				sendCharacterFile(conn, gobEncoder, msg.getMessage())
+				charXML := getCharacterXMLFromFile(msg.getMessage())
+				gobEncoder.Encode(charXML)
 			} else {
 				//saveCharacterFile(conn, gobDecoder, msg.getMessage())
 			}
 
+			conn.Close()
 		}
 	}
 }
@@ -67,14 +67,6 @@ func runClientServer() {
 			go HandleLoginClient(conn)
 		}
 	}
-}
-
-func sendCharacterFile(conn net.Conn, gobEncoder *gob.Encoder, name string) {
-
-	charXML := getCharacterXMLFromFile(name)
-	gobEncoder.Encode(charXML)
-	conn.Close()
-
 }
 
 func getCharacterXMLFromFile(charName string) *CharacterXML {
