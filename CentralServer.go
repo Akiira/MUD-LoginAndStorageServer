@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/gob"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -38,13 +40,15 @@ func runCharacterServer() {
 		if err == nil {
 			fmt.Println("\tCharacter Server:Connection established")
 			var msg ServerMessage
-			err := gob.NewDecoder(conn).Decode(&msg)
+			gobDecoder := gob.NewDecoder(conn)
+			gobEncoder := gob.NewEncoder(conn)
+			err := gobDecoder.Decode(&msg)
 			checkError(err)
 
 			if msg.MsgType == GETFILE {
-				sendCharacterFile(conn, msg.getMessage())
+				sendCharacterFile(conn, gobEncoder, msg.getMessage())
 			} else {
-				saveCharacterFile(conn, msg.getMessage())
+				//saveCharacterFile(conn, gobDecoder, msg.getMessage())
 			}
 
 		}
@@ -65,19 +69,31 @@ func runClientServer() {
 	}
 }
 
-func sendCharacterFile(conn net.Conn, name string) {
-	defer conn.Close()
-	file, err := os.Open("Characters/" + name + ".xml")
-	checkError(err)
-	defer file.Close()
+func sendCharacterFile(conn net.Conn, gobEncoder *gob.Encoder, name string) {
 
-	written, err := io.Copy(conn, file)
-	checkError(err)
-	fmt.Println("Amount Written: ", written)
+	charXML := getCharacterXMLFromFile(name)
+	gobEncoder.Encode(charXML)
+	conn.Close()
+
 }
 
-func saveCharacterFile(conn net.Conn, name string) {
-	defer conn.Close()
+func getCharacterXMLFromFile(charName string) *CharacterXML {
+
+	fmt.Println("looking for : " + charName)
+	xmlFile, err := os.Open("Characters/" + charName + ".xml")
+	checkError(err)
+
+	XMLdata, _ := ioutil.ReadAll(xmlFile)
+
+	var charData CharacterXML
+	xml.Unmarshal(XMLdata, &charData)
+	xmlFile.Close()
+	return &charData
+}
+
+/*
+func saveCharacterFile(conn net.Conn, gobDecoder *gob.Decoder, name string) {
+
 	file, err := os.Create("Characters/" + name + ".xml")
 	checkError(err)
 	defer file.Close()
@@ -86,10 +102,20 @@ func saveCharacterFile(conn net.Conn, name string) {
 	buf.Grow(10000)
 	written, err := io.CopyN(buf, conn, 10000)
 	fmt.Println("Amount Written: ", written)
-
 	file.Write(buf.Bytes())
-}
+*/ /*
+   file, err := os.Create("Characters/" + name + ".xml")
+   	checkError(err, true)
+   	sent, err := io.Copy(file, conn)
+   	checkError(err, true)
+   	fmt.Println("Amount Receive: ", sent)
+   	file.Close()
+*/
+/*
+	conn.Close()
 
+}
+*/
 func HandleLoginClient(myConn net.Conn) {
 	var clientResponse ClientMessage
 
