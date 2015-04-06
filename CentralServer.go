@@ -23,9 +23,9 @@ func main() {
 	servers = make(map[string]string)
 
 	readServerList()
-
-	go runCharacterServer()
-	runClientServer()
+	runCharacterServer()
+	//	go runCharacterServer()
+	//	runClientServer()
 }
 
 func runCharacterServer() {
@@ -45,9 +45,13 @@ func runCharacterServer() {
 
 			if msg.MsgType == GETFILE {
 				charXML := getCharacterXMLFromFile(msg.getMessage())
-				gobEncoder.Encode(charXML)
+				err = gobEncoder.Encode(*charXML)
+				checkError(err)
 			} else {
-				//saveCharacterFile(conn, gobDecoder, msg.getMessage())
+				var char CharacterXML
+				err := gobDecoder.Decode(&char)
+				checkError(err)
+				saveCharacterFile(&char)
 			}
 
 			conn.Close()
@@ -83,31 +87,19 @@ func getCharacterXMLFromFile(charName string) *CharacterXML {
 	return &charData
 }
 
-/*
-func saveCharacterFile(conn net.Conn, gobDecoder *gob.Decoder, name string) {
-
-	file, err := os.Create("Characters/" + name + ".xml")
+func saveCharacterFile(char *CharacterXML) {
+	fmt.Println("Saving char: ", char)
+	file, err := os.Create("Characters/" + char.Name + ".xml")
 	checkError(err)
 	defer file.Close()
 
-	buf := new(bytes.Buffer)
-	buf.Grow(10000)
-	written, err := io.CopyN(buf, conn, 10000)
-	fmt.Println("Amount Written: ", written)
-	file.Write(buf.Bytes())
-*/ /*
-   file, err := os.Create("Characters/" + name + ".xml")
-   	checkError(err, true)
-   	sent, err := io.Copy(file, conn)
-   	checkError(err, true)
-   	fmt.Println("Amount Receive: ", sent)
-   	file.Close()
-*/
-/*
-	conn.Close()
+	enc := xml.NewEncoder(file)
+	enc.Indent(" ", " ")
 
+	err = enc.Encode(char)
+	checkError(err)
 }
-*/
+
 func HandleLoginClient(myConn net.Conn) {
 	var clientResponse ClientMessage
 
