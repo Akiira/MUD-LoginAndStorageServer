@@ -23,9 +23,9 @@ func main() {
 	servers = make(map[string]string)
 
 	readServerList()
-	runCharacterServer()
+	go runCharacterServer()
 	//	go runCharacterServer()
-	//	runClientServer()
+	runClientServer()
 }
 
 func runCharacterServer() {

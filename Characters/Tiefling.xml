@@ -1,8 +1,8 @@
  <Character>
   <Name>Tiefling</Name>
-  <RoomIN>0</RoomIN>
+  <RoomIN>1003</RoomIN>
   <HitPoints>30</HitPoints>
-  <Defense>2</Defense>
+  <Defense>0</Defense>
   <Strength>14</Strength>
   <Constitution>15</Constitution>
   <Dexterity>18</Dexterity>
@@ -10,16 +10,17 @@
   <Charisma>13</Charisma>
   <Inteligence>16</Inteligence>
   <Level>1</Level>
-  <CurrentWorld>World1</CurrentWorld>
+  <CurrentWorld>world1</CurrentWorld>
   <Weapon>
    <Item>
     <Name>Short Sword</Name>
     <Description>An old short sword.</Description>
     <Level>1</Level>
     <Worth>10</Worth>
+    <Quantity>1</Quantity>
    </Item>
    <Attack>3</Attack>
-   <Damage>5</Damage>
+   <Damage>0</Damage>
   </Weapon>
   <ArmourSet>
    <Armour>
@@ -28,6 +29,7 @@
      <Description>A large hat with many colors</Description>
      <Level>1</Level>
      <Worth>2</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Head</Location>
@@ -38,6 +40,7 @@
      <Description>Oversized pants with an odd color</Description>
      <Level>1</Level>
      <Worth>2</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Legs</Location>
@@ -48,6 +51,7 @@
      <Description>Tattered old boots</Description>
      <Level>1</Level>
      <Worth>2</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Feet</Location>
@@ -59,6 +63,7 @@
     <Description>A sturdy copper lantern</Description>
     <Level>1</Level>
     <Worth>5</Worth>
+    <Quantity>1</Quantity>
    </Item>
    <Weapon>
     <Item>
@@ -66,9 +71,10 @@
      <Description>An old short sword.</Description>
      <Level>1</Level>
      <Worth>10</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Attack>3</Attack>
-    <Damage>5</Damage>
+    <Damage>0</Damage>
    </Weapon>
    <Armour>
     <Item>
@@ -76,6 +82,7 @@
      <Description>A large hat with many colors</Description>
      <Level>1</Level>
      <Worth>2</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Head</Location>
@@ -86,6 +93,7 @@
      <Description>Oversized pants with an odd color</Description>
      <Level>1</Level>
      <Worth>2</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Legs</Location>
@@ -96,6 +104,7 @@
      <Description>Tattered old boots</Description>
      <Level>1</Level>
      <Worth>2</Worth>
+     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Feet</Location>

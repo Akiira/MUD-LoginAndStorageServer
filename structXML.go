@@ -60,4 +60,5 @@ type ItemXML struct {
 	Description string   `xml:"Description"`
 	ItemLevel   int      `xml:"Level"`
 	ItemWorth   int      `xml:"Worth"`
+	Quantity    int      `xml:"Quantity"`
 }
