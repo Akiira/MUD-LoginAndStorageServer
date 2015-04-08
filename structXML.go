@@ -52,6 +52,8 @@ type WeaponXML struct {
 	ItemInfo ItemXML  `xml:"Item"`
 	Attack   int      `xml:"Attack"`
 	Damage   int      `xml:"Damage"`
+	MinDmg   int      `xml:"MinDmg"`
+	MaxDmg   int      `xml:"MaxDmg"`
 }
 
 type ItemXML struct {

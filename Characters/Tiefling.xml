@@ -1,6 +1,6 @@
  <Character>
   <Name>Tiefling</Name>
-  <RoomIN>1003</RoomIN>
+  <RoomIN>1000</RoomIN>
   <HitPoints>30</HitPoints>
   <Defense>0</Defense>
   <Strength>14</Strength>
@@ -21,6 +21,8 @@
    </Item>
    <Attack>3</Attack>
    <Damage>0</Damage>
+   <MinDmg>3</MinDmg>
+   <MaxDmg>5</MaxDmg>
   </Weapon>
   <ArmourSet>
    <Armour>
@@ -75,6 +77,8 @@
     </Item>
     <Attack>3</Attack>
     <Damage>0</Damage>
+    <MinDmg>0</MinDmg>
+    <MaxDmg>0</MaxDmg>
    </Weapon>
    <Armour>
     <Item>
