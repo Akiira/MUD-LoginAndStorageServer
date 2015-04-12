@@ -1,8 +1,8 @@
  <Character>
   <Name>Tiefling</Name>
-  <RoomIN>0</RoomIN>
+  <RoomIN>1000</RoomIN>
   <HitPoints>30</HitPoints>
-  <Defense>2</Defense>
+  <Defense>0</Defense>
   <Strength>14</Strength>
   <Constitution>15</Constitution>
   <Dexterity>18</Dexterity>
@@ -10,7 +10,7 @@
   <Charisma>13</Charisma>
   <Inteligence>16</Inteligence>
   <Level>1</Level>
-  <CurrentWorld>World1</CurrentWorld>
+  <CurrentWorld>world1</CurrentWorld>
   <Weapon>
    <Item>
     <Name>Short Sword</Name>
@@ -19,7 +19,9 @@
     <Worth>10</Worth>
    </Item>
    <Attack>3</Attack>
-   <Damage>5</Damage>
+   <Damage>0</Damage>
+   <MinDmg>3</MinDmg>
+   <MaxDmg>5</MaxDmg>
   </Weapon>
   <ArmourSet>
    <Armour>
@@ -68,7 +70,9 @@
      <Worth>10</Worth>
     </Item>
     <Attack>3</Attack>
-    <Damage>5</Damage>
+    <Damage>0</Damage>
+    <MinDmg>0</MinDmg>
+    <MaxDmg>0</MaxDmg>
    </Weapon>
    <Armour>
     <Item>
