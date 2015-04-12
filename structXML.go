@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/xml"
+	"io"
 )
 
 type Item_I interface {
-	getName() string
-	getDescription() string
-	getItemType() int
-	toXML() ItemXML_I
+}
+
+type ItemXML_I interface {
 }
 
 type CharacterXML struct {
@@ -30,13 +30,10 @@ type CharacterXML struct {
 
 	CurrentWorld string `xml:"CurrentWorld"`
 
+	WeaponComment xml.Comment  `xml:",comment"`
 	EquipedWeapon WeaponXML    `xml:"Weapon"`
 	ArmSet        ArmourSetXML `xml:"ArmourSet"`
 	PersInv       InventoryXML `xml:"Inventory"`
-}
-
-type ItemXML_I interface {
-	toItem() Item_I
 }
 
 type ItemXML struct {
@@ -48,8 +45,8 @@ type ItemXML struct {
 }
 
 type InventoryXML struct {
-	XMLName xml.Name    `xml:"Inventory"`
-	Items   []ItemXML_I `xml:",any"`
+	XMLName xml.Name      `xml:"Inventory"`
+	Items   []interface{} `xml:",any"`
 }
 
 type ArmourSetXML struct {
@@ -70,4 +67,29 @@ type WeaponXML struct {
 	Attack   int      `xml:"Attack"`
 	MinDmg   int      `xml:"MinDmg"`
 	MaxDmg   int      `xml:"MaxDmg"`
+}
+
+func (c *InventoryXML) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var item ItemXML_I
+
+	for t, err := d.Token(); err != io.EOF; {
+		switch t1 := t.(type) {
+		case xml.StartElement:
+			if t1.Name.Local == "Armour" {
+				item = new(ArmourXML)
+			} else if t1.Name.Local == "Weapon" {
+				item = new(WeaponXML)
+			} else {
+				item = new(ItemXML)
+			}
+
+			err = d.DecodeElement(item, &t1)
+			checkError(err)
+			c.Items = append(c.Items, item)
+		}
+
+		t, err = d.Token()
+	}
+
+	return nil
 }
