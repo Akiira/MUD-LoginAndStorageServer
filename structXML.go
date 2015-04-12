@@ -4,6 +4,13 @@ import (
 	"encoding/xml"
 )
 
+type Item_I interface {
+	getName() string
+	getDescription() string
+	getItemType() int
+	toXML() ItemXML_I
+}
+
 type CharacterXML struct {
 	XMLName xml.Name `xml:"Character"`
 	Name    string   `xml:"Name"`
@@ -28,11 +35,21 @@ type CharacterXML struct {
 	PersInv       InventoryXML `xml:"Inventory"`
 }
 
+type ItemXML_I interface {
+	toItem() Item_I
+}
+
+type ItemXML struct {
+	XMLName     xml.Name `xml:"Item"`
+	Name        string   `xml:"Name"`
+	Description string   `xml:"Description"`
+	ItemLevel   int      `xml:"Level"`
+	ItemWorth   int      `xml:"Worth"`
+}
+
 type InventoryXML struct {
 	XMLName xml.Name    `xml:"Inventory"`
-	Items   []ItemXML   `xml:"Item"`
-	Weapons []WeaponXML `xml:"Weapon"`
-	Armours []ArmourXML `xml:"Armour"`
+	Items   []ItemXML_I `xml:",any"`
 }
 
 type ArmourSetXML struct {
@@ -49,15 +66,8 @@ type ArmourXML struct {
 
 type WeaponXML struct {
 	XMLName  xml.Name `xml:"Weapon"`
-	ItemInfo ItemXML  `xml:"Item"`
+	ItemInfo *ItemXML `xml:"Item"`
 	Attack   int      `xml:"Attack"`
-	Damage   int      `xml:"Damage"`
-}
-
-type ItemXML struct {
-	XMLName     xml.Name `xml:"Item"`
-	Name        string   `xml:"Name"`
-	Description string   `xml:"Description"`
-	ItemLevel   int      `xml:"Level"`
-	ItemWorth   int      `xml:"Worth"`
+	MinDmg   int      `xml:"MinDmg"`
+	MaxDmg   int      `xml:"MaxDmg"`
 }
