@@ -17,7 +17,6 @@
     <Description>An old short sword.</Description>
     <Level>1</Level>
     <Worth>10</Worth>
-    <Quantity>1</Quantity>
    </Item>
    <Attack>3</Attack>
    <Damage>0</Damage>
@@ -31,7 +30,6 @@
      <Description>A large hat with many colors</Description>
      <Level>1</Level>
      <Worth>2</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Head</Location>
@@ -42,7 +40,6 @@
      <Description>Oversized pants with an odd color</Description>
      <Level>1</Level>
      <Worth>2</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Legs</Location>
@@ -53,7 +50,6 @@
      <Description>Tattered old boots</Description>
      <Level>1</Level>
      <Worth>2</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Feet</Location>
@@ -65,7 +61,6 @@
     <Description>A sturdy copper lantern</Description>
     <Level>1</Level>
     <Worth>5</Worth>
-    <Quantity>1</Quantity>
    </Item>
    <Weapon>
     <Item>
@@ -73,7 +68,6 @@
      <Description>An old short sword.</Description>
      <Level>1</Level>
      <Worth>10</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Attack>3</Attack>
     <Damage>0</Damage>
@@ -86,7 +80,6 @@
      <Description>A large hat with many colors</Description>
      <Level>1</Level>
      <Worth>2</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Head</Location>
@@ -97,7 +90,6 @@
      <Description>Oversized pants with an odd color</Description>
      <Level>1</Level>
      <Worth>2</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Legs</Location>
@@ -108,7 +100,6 @@
      <Description>Tattered old boots</Description>
      <Level>1</Level>
      <Worth>2</Worth>
-     <Quantity>1</Quantity>
     </Item>
     <Defense>1</Defense>
     <Location>Feet</Location>

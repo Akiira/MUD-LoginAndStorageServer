@@ -20,11 +20,16 @@ const (
 var servers map[string]string
 
 func main() {
+	gob.Register(WeaponXML{})
+	gob.Register(ArmourXML{})
+	gob.Register(ArmourSetXML{})
+	gob.Register(ItemXML{})
+
 	servers = make(map[string]string)
 
 	readServerList()
 	go runCharacterServer()
-	//	go runCharacterServer()
+
 	runClientServer()
 }
 
@@ -45,6 +50,7 @@ func runCharacterServer() {
 
 			if msg.MsgType == GETFILE {
 				charXML := getCharacterXMLFromFile(msg.getMessage())
+				fmt.Println("Sending char: ", *charXML)
 				err = gobEncoder.Encode(*charXML)
 				checkError(err)
 			} else {
