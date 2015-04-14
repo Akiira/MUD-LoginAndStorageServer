@@ -98,6 +98,24 @@ func saveCharacterFile(char *CharacterXML) {
 
 	err = enc.Encode(char)
 	checkError(err)
+
+	currentWorld := char.CurrentWorld
+
+	file, err := os.Open("Characters/Passwords/" + char.Name + ".txt")
+	checkError(err)
+
+	reader := bufio.NewReader(file)
+	line, _, err := reader.ReadLine()
+	s := strings.Split(string(line), " ")
+	pass := s[PASSWORD]
+	file.Close()
+
+	passfile, err := os.Create("Characters/" + char.Name + ".xml")
+	checkError(err)
+	defer passfile.Close()
+	writer := bufio.NewWriter(passfile)
+	writer.WriteString(pass + " " + currentWorld)
+
 }
 
 func HandleLoginClient(myConn net.Conn) {
@@ -115,6 +133,8 @@ func HandleLoginClient(myConn net.Conn) {
 		line, _, err := reader.ReadLine()
 
 		s := strings.Split(string(line), " ")
+
+		file.Close()
 
 		if s[PASSWORD] == clientResponse.getPassword() {
 			newAddress := servers[s[ADDRESS]]
