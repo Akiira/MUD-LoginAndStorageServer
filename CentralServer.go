@@ -107,20 +107,24 @@ func saveCharacterFile(char *CharacterXML) {
 
 	currentWorld := char.CurrentWorld
 
-	file, err := os.Open("Characters/Passwords/" + char.Name + ".txt")
+	readPassFile, err := os.Open("Characters/Passwords/" + char.Name + ".txt")
 	checkError(err)
 
-	reader := bufio.NewReader(file)
+	reader := bufio.NewReader(readPassFile)
 	line, _, err := reader.ReadLine()
 	s := strings.Split(string(line), " ")
 	pass := s[PASSWORD]
-	file.Close()
+	readPassFile.Close()
 
-	passfile, err := os.Create("Characters/" + char.Name + ".xml")
+	fmt.Println(pass + " : " + currentWorld)
+
+	passfile, err := os.Create("Characters/Passwords/" + char.Name + ".txt")
 	checkError(err)
-	defer passfile.Close()
 	writer := bufio.NewWriter(passfile)
-	writer.WriteString(pass + " " + currentWorld)
+	num, err := writer.WriteString(pass + " " + currentWorld)
+	checkError(err)
+	writer.Flush()
+	passfile.Close()
 
 }
 
