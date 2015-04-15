@@ -121,7 +121,7 @@ func saveCharacterFile(char *CharacterXML) {
 	passfile, err := os.Create("Characters/Passwords/" + char.Name + ".txt")
 	checkError(err)
 	writer := bufio.NewWriter(passfile)
-	num, err := writer.WriteString(pass + " " + currentWorld)
+	_, err = writer.WriteString(pass + " " + currentWorld)
 	checkError(err)
 	writer.Flush()
 	passfile.Close()
