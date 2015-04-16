@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 )
 
 const (
@@ -18,8 +19,11 @@ const (
 )
 
 var servers map[string]string
+var fileSystemMutex sync.Mutex
+var passwordPath string = "Characters/Passwords/"
 
 func main() {
+
 	gob.Register(WeaponXML{})
 	gob.Register(ArmourXML{})
 	gob.Register(ArmourSetXML{})
@@ -57,6 +61,7 @@ func runCharacterServer() {
 				var char CharacterXML
 				err := gobDecoder.Decode(&char)
 				checkError(err)
+
 				saveCharacterFile(&char)
 			}
 
@@ -79,88 +84,27 @@ func runClientServer() {
 	}
 }
 
-func getCharacterXMLFromFile(charName string) *CharacterXML {
-
-	fmt.Println("looking for : " + charName)
-	xmlFile, err := os.Open("Characters/" + charName + ".xml")
-	checkError(err)
-
-	XMLdata, _ := ioutil.ReadAll(xmlFile)
-
-	var charData CharacterXML
-	xml.Unmarshal(XMLdata, &charData)
-	xmlFile.Close()
-	return &charData
-}
-
-func saveCharacterFile(char *CharacterXML) {
-	fmt.Println("Saving char: ", char)
-	file, err := os.Create("Characters/" + char.Name + ".xml")
-	checkError(err)
-	defer file.Close()
-
-	enc := xml.NewEncoder(file)
-	enc.Indent(" ", " ")
-
-	err = enc.Encode(char)
-	checkError(err)
-
-	currentWorld := char.CurrentWorld
-
-	readPassFile, err := os.Open("Characters/Passwords/" + char.Name + ".txt")
-	checkError(err)
-
-	reader := bufio.NewReader(readPassFile)
-	line, _, err := reader.ReadLine()
-	s := strings.Split(string(line), " ")
-	pass := s[PASSWORD]
-	readPassFile.Close()
-
-	fmt.Println(pass + " : " + currentWorld)
-
-	passfile, err := os.Create("Characters/Passwords/" + char.Name + ".txt")
-	checkError(err)
-	writer := bufio.NewWriter(passfile)
-	_, err = writer.WriteString(pass + " " + currentWorld)
-	checkError(err)
-	writer.Flush()
-	passfile.Close()
-
-}
-
 func HandleLoginClient(myConn net.Conn) {
-	var clientResponse ClientMessage
+	var clientsMsg ClientMessage
+	var servMsg ServerMessage
+	defer myConn.Close()
 
-	err := gob.NewDecoder(myConn).Decode(&clientResponse)
+	err := gob.NewDecoder(myConn).Decode(&clientsMsg)
 	checkError(err)
 
-	if _, err := os.Stat("Characters/Passwords/" + clientResponse.getUsername() + ".txt"); err == nil {
-		file, err := os.Open("Characters/Passwords/" + clientResponse.getUsername() + ".txt")
-		checkError(err)
+	if DoesCharacterExist(clientsMsg.getUsername()) {
 
-		reader := bufio.NewReader(file)
-
-		line, _, err := reader.ReadLine()
-
-		s := strings.Split(string(line), " ")
-
-		file.Close()
-
-		if s[PASSWORD] == clientResponse.getPassword() {
-			newAddress := servers[s[ADDRESS]]
-			gob.NewEncoder(myConn).Encode(newServerMessageTypeS(REDIRECT, newAddress))
+		if GetCharactersPassword(clientsMsg.getPassword()) == clientsMsg.getPassword() {
+			servMsg = newServerMessageTypeS(REDIRECT, GetCharactersWorld(clientsMsg.getUsername()))
 		} else {
-			//TODO
-			//Incorrect password
-			fmt.Println("\tERROR: incorrect password")
+			servMsg = newServerMessageTypeS(ERROR, "Incorrect password, closing connection.")
 		}
 	} else {
-		//TODO
-		//Character not found
-		fmt.Println("\tERROR: character not found")
+		servMsg = newServerMessageTypeS(ERROR, "Character does not exist, closing connection.")
 	}
 
-	myConn.Close()
+	err = gob.NewEncoder(myConn).Encode(servMsg)
+	checkError(err)
 }
 
 func readServerList() {
@@ -181,6 +125,130 @@ func readServerList() {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getCharacterXMLFromFile(charName string) *CharacterXML {
+	fmt.Println("looking for : " + charName)
+	xmlFile, err := os.Open("Characters/" + charName + ".xml")
+	checkError(err)
+	defer xmlFile.Close()
+
+	XMLdata, err := ioutil.ReadAll(xmlFile)
+	checkError(err)
+
+	var charData CharacterXML
+	err = xml.Unmarshal(XMLdata, &charData)
+	checkError(err)
+
+	return &charData
+}
+
+func saveCharacterFile(char *CharacterXML) {
+	fmt.Println("Saving char: ", char)
+	file, err := os.Create("Characters/" + char.Name + ".xml")
+	checkError(err)
+	defer file.Close()
+
+	enc := xml.NewEncoder(file)
+	enc.Indent(" ", "\t")
+
+	err = enc.Encode(char)
+	checkError(err)
+
+	UpdatePasswordFile(char.Name, GetCharactersPassword(char.Name), char.CurrentWorld)
+}
+
+func GetCharactersPassword(name string) (password string) {
+	pwFile, err := os.Open(passwordPath + name + ".txt")
+	checkError(err)
+	defer pwFile.Close()
+
+	reader := bufio.NewReader(pwFile)
+	line, _, err := reader.ReadLine()
+	checkError(err)
+	pwAndWorld := strings.Split(string(line), " ")
+
+	return pwAndWorld[PASSWORD]
+}
+
+func GetCharactersWorld(name string) string {
+	pwFile, err := os.Open(passwordPath + name + ".txt")
+	checkError(err)
+	defer pwFile.Close()
+
+	reader := bufio.NewReader(pwFile)
+	line, _, err := reader.ReadLine()
+	checkError(err)
+	pwAndWorld := strings.Split(string(line), " ")
+
+	return pwAndWorld[ADDRESS]
+}
+
+func DoesCharacterExist(name string) (found bool) {
+	if _, err := os.Stat("Characters/" + name + ".xml"); err != nil {
+		found = false
+	} else {
+		found = true
+	}
+
+	return found
+}
+
+func UpdatePasswordFile(name, password, world string) {
+	pwFile, err := os.Create(passwordPath + name + ".txt")
+	checkError(err)
+	defer pwFile.Close()
+
+	_, err = pwFile.Write([]byte(password + " " + world))
+	checkError(err)
+}
+
+func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
+	fileSystemMutex.Lock()
+	defer fileSystemMutex.Unlock()
+
+	var msg ClientMessage
+	var charData CharacterXML
+
+	//ask for name
+	encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
+
+	//get name
+	decder.Decode(&msg)
+
+	//check name is not taken
+	if DoesCharacterExist(msg.getUsername()) == false {
+		//break
+	}
+
+	os.Create("Characters/Passwords/" + msg.getUsername() + ".txt")
+
+	//ask for password
+	encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
+
+	//get password
+	decder.Decode(&msg)
+
+	//display races
+	encder.Encode(newMessageWithRaces()) //TODO
+
+	//get selection
+	decder.Decode(&msg)
+
+	//display classes
+	encder.Encode(newMessageWithClasses()) //TODO
+
+	//get selection
+	decder.Decode(&msg)
+
+	//roll stats
+	//display stats
+	//reroll if desired
+
+	//when accepted save to xml file.
+	saveCharacterFile(&charData)
+
+	//save the password file
 }
 
 func setUpServerWithAddress(addr string) *net.TCPListener {

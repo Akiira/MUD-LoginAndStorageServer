@@ -2,10 +2,12 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 )
 
 const (
+	ERROR    = 0
 	REDIRECT = 1
 	GETFILE  = 2
 	SAVEFILE = 3
@@ -32,6 +34,14 @@ func newServerMessageTypeFS(typeOfMsg int, msgs []FormattedString) ServerMessage
 
 func newServerMessageTypeS(typeOfMsg int, msg string) ServerMessage {
 	return ServerMessage{MsgType: typeOfMsg, Value: newFormattedStringSplice(msg)}
+}
+
+func newMessageWithRaces() ServerMessage {
+	return newServerMessageS(fmt.Sprintf("\t%10s\t%10s\t%10s", "Elf", "Human", "Dwarf"))
+}
+
+func newMessageWithClasses() ServerMessage {
+	return newServerMessageS(fmt.Sprintf("\t%10s\t%s", "Fighter", "Wizard"))
 }
 
 func (msg *ServerMessage) getMessage() string {
