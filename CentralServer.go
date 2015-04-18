@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	PASSWORD = 0
-	ADDRESS  = 1
+	PASSWORD   = 0
+	SRVER_NAME = 1
 )
 
 var servers map[string]string
@@ -49,12 +49,12 @@ func runCharacterServer() {
 			var msg ServerMessage
 			gobDecoder := gob.NewDecoder(conn)
 			gobEncoder := gob.NewEncoder(conn)
+
 			err := gobDecoder.Decode(&msg)
 			checkError(err)
 
 			if msg.MsgType == GETFILE {
 				charXML := getCharacterXMLFromFile(msg.getMessage())
-				fmt.Println("Sending char: ", *charXML)
 				err = gobEncoder.Encode(*charXML)
 				checkError(err)
 			} else {
@@ -93,8 +93,7 @@ func HandleLoginClient(myConn net.Conn) {
 	checkError(err)
 
 	if DoesCharacterExist(clientsMsg.getUsername()) {
-
-		if GetCharactersPassword(clientsMsg.getPassword()) == clientsMsg.getPassword() {
+		if GetCharactersPassword(clientsMsg.getUsername()) == clientsMsg.getPassword() {
 			servMsg = newServerMessageTypeS(REDIRECT, GetCharactersWorld(clientsMsg.getUsername()))
 		} else {
 			servMsg = newServerMessageTypeS(ERROR, "Incorrect password, closing connection.")
@@ -103,6 +102,7 @@ func HandleLoginClient(myConn net.Conn) {
 		servMsg = newServerMessageTypeS(ERROR, "Character does not exist, closing connection.")
 	}
 
+	fmt.Println("\tSending message: ", servMsg.Value, ", ", servMsg.MsgType)
 	err = gob.NewEncoder(myConn).Encode(servMsg)
 	checkError(err)
 }
@@ -160,7 +160,7 @@ func saveCharacterFile(char *CharacterXML) {
 
 func GetCharactersPassword(name string) (password string) {
 	pwFile, err := os.Open(passwordPath + name + ".txt")
-	checkError(err)
+	checkErrorWithMessage(err, "Failed to open password file for: "+name)
 	defer pwFile.Close()
 
 	reader := bufio.NewReader(pwFile)
@@ -173,7 +173,7 @@ func GetCharactersPassword(name string) (password string) {
 
 func GetCharactersWorld(name string) string {
 	pwFile, err := os.Open(passwordPath + name + ".txt")
-	checkError(err)
+	checkErrorWithMessage(err, "Failed to open password file to get world id for character: "+name)
 	defer pwFile.Close()
 
 	reader := bufio.NewReader(pwFile)
@@ -181,7 +181,7 @@ func GetCharactersWorld(name string) string {
 	checkError(err)
 	pwAndWorld := strings.Split(string(line), " ")
 
-	return pwAndWorld[ADDRESS]
+	return servers[pwAndWorld[SRVER_NAME]]
 }
 
 func DoesCharacterExist(name string) (found bool) {
@@ -196,7 +196,7 @@ func DoesCharacterExist(name string) (found bool) {
 
 func UpdatePasswordFile(name, password, world string) {
 	pwFile, err := os.Create(passwordPath + name + ".txt")
-	checkError(err)
+	checkErrorWithMessage(err, "Failed to create password file for: "+name)
 	defer pwFile.Close()
 
 	_, err = pwFile.Write([]byte(password + " " + world))
@@ -221,7 +221,7 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 		//break
 	}
 
-	os.Create("Characters/Passwords/" + msg.getUsername() + ".txt")
+	os.Create(passwordPath + msg.getUsername() + ".txt")
 
 	//ask for password
 	encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
@@ -230,13 +230,13 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 	decder.Decode(&msg)
 
 	//display races
-	encder.Encode(newMessageWithRaces()) //TODO
+	encder.Encode(newMessageWithRaces())
 
 	//get selection
 	decder.Decode(&msg)
 
 	//display classes
-	encder.Encode(newMessageWithClasses()) //TODO
+	encder.Encode(newMessageWithClasses())
 
 	//get selection
 	decder.Decode(&msg)
@@ -257,6 +257,14 @@ func setUpServerWithAddress(addr string) *net.TCPListener {
 	listener, err := net.ListenTCP("tcp", tcpAddr)
 	checkError(err)
 	return listener
+}
+
+func checkErrorWithMessage(err error, msg string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal error: %s\n", err.Error())
+		fmt.Println(msg)
+		os.Exit(1)
+	}
 }
 
 func checkError(err error) {
