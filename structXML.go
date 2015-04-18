@@ -16,7 +16,8 @@ type CharacterXML struct {
 	Name    string   `xml:"Name"`
 	RoomIN  int      `xml:"RoomIN"`
 	HP      int      `xml:"HitPoints"`
-	Defense int      `xml:"Defense"`
+	Race    string   `xml:"Race"`
+	Class   string   `xml:"Class"`
 
 	Strength     int `xml:"Strength"`
 	Constitution int `xml:"Constitution"`
@@ -26,7 +27,8 @@ type CharacterXML struct {
 	Inteligence  int `xml:"Inteligence"`
 
 	Level      int `xml:"Level"`
-	experience int `xml:"experience"`
+	Experience int `xml:"Experience"`
+	Gold       int `xml:"Gold"`
 
 	CurrentWorld string `xml:"CurrentWorld"`
 
@@ -34,6 +36,25 @@ type CharacterXML struct {
 	EquipedWeapon WeaponXML    `xml:"Weapon"`
 	ArmSet        ArmourSetXML `xml:"ArmourSet"`
 	PersInv       InventoryXML `xml:"Inventory"`
+}
+
+func (c *CharacterXML) SetStats(stats []int) {
+	c.Strength = stats[0]
+	c.Constitution = stats[1]
+	c.Dexterity = stats[2]
+	c.Wisdom = stats[3]
+	c.Charisma = stats[4]
+	c.Inteligence = stats[5]
+}
+
+func (c *CharacterXML) SetToDefaultValues() {
+	c.RoomIN = 1001
+	c.HP = 20 + c.Constitution
+	c.Level = 1
+	c.Gold = 50
+	c.CurrentWorld = "world1"
+	c.WeaponComment = xml.Comment("The equiped weapon")
+	c.EquipedWeapon = NewButterKnife()
 }
 
 type ItemXML struct {
@@ -67,6 +88,20 @@ type WeaponXML struct {
 	Attack   int      `xml:"Attack"`
 	MinDmg   int      `xml:"MinDmg"`
 	MaxDmg   int      `xml:"MaxDmg"`
+}
+
+func NewButterKnife() WeaponXML {
+	var wpn WeaponXML
+	wpn.ItemInfo = new(ItemXML)
+	wpn.ItemInfo.Name = "Rusty Butter Knife"
+	wpn.ItemInfo.Description = "An old rusty butter knife, why would anyone use this as a weapon?"
+	wpn.ItemInfo.ItemLevel = 0
+	wpn.ItemInfo.ItemWorth = 0
+	wpn.Attack = 1
+	wpn.MinDmg = 0
+	wpn.MaxDmg = 2
+
+	return wpn
 }
 
 func (c *InventoryXML) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
