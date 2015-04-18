@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strings"
@@ -17,6 +18,22 @@ const (
 	PASSWORD   = 0
 	SRVER_NAME = 1
 )
+
+//type CentralServer struct {
+//	servers         map[string]string
+//	fileSystemMutex sync.Mutex
+//	passwordPath    string
+//}
+
+//func (cs *CentralServer) LoadS
+
+//func (cs *CentralServer) StartClientServer() {
+
+//}
+
+//func (cs *CentralServer) StartCharacterServer() {
+
+//}
 
 var servers map[string]string
 var fileSystemMutex sync.Mutex
@@ -54,7 +71,7 @@ func runCharacterServer() {
 			checkError(err)
 
 			if msg.MsgType == GETFILE {
-				charXML := getCharacterXMLFromFile(msg.getMessage())
+				charXML := GetCharacterXML(msg.getMessage())
 				err = gobEncoder.Encode(*charXML)
 				checkError(err)
 			} else {
@@ -92,7 +109,7 @@ func HandleLoginClient(myConn net.Conn) {
 	err := gob.NewDecoder(myConn).Decode(&clientsMsg)
 	checkError(err)
 
-	if DoesCharacterExist(clientsMsg.getUsername()) {
+	if CharacterExists(clientsMsg.getUsername()) {
 		if GetCharactersPassword(clientsMsg.getUsername()) == clientsMsg.getPassword() {
 			servMsg = newServerMessageTypeS(REDIRECT, GetCharactersWorld(clientsMsg.getUsername()))
 		} else {
@@ -107,27 +124,7 @@ func HandleLoginClient(myConn net.Conn) {
 	checkError(err)
 }
 
-func readServerList() {
-	servers = make(map[string]string)
-	file, err := os.Open("serverConfig/serverList.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		readData := strings.Fields(scanner.Text())
-		fmt.Println(readData[0], " ", readData[1])
-		servers[readData[0]] = readData[1]
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func getCharacterXMLFromFile(charName string) *CharacterXML {
+func GetCharacterXML(charName string) *CharacterXML {
 	fmt.Println("looking for : " + charName)
 	xmlFile, err := os.Open("Characters/" + charName + ".xml")
 	checkError(err)
@@ -184,7 +181,7 @@ func GetCharactersWorld(name string) string {
 	return servers[pwAndWorld[SRVER_NAME]]
 }
 
-func DoesCharacterExist(name string) (found bool) {
+func CharacterExists(name string) (found bool) {
 	if _, err := os.Stat("Characters/" + name + ".xml"); err != nil {
 		found = false
 	} else {
@@ -209,46 +206,89 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 
 	var msg ClientMessage
 	var charData CharacterXML
+	charData.SetToDefaultValues()
 
-	//ask for name
-	encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
+	for {
+		//ask for name
+		encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
+		decder.Decode(&msg)
+		charData.Name = msg.Value
 
-	//get name
-	decder.Decode(&msg)
-
-	//check name is not taken
-	if DoesCharacterExist(msg.getUsername()) == false {
-		//break
+		//check name is not taken
+		if !CharacterExists(msg.getUsername()) {
+			break
+		}
 	}
 
-	os.Create(passwordPath + msg.getUsername() + ".txt")
-
 	//ask for password
-	encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
-
-	//get password
+	encder.Encode(newServerMessageS("Enter a password.\n"))
 	decder.Decode(&msg)
+	password := msg.Value
 
 	//display races
 	encder.Encode(newMessageWithRaces())
-
-	//get selection
 	decder.Decode(&msg)
+	charData.Race = msg.Value //TODO chekc valid choice
 
 	//display classes
 	encder.Encode(newMessageWithClasses())
-
-	//get selection
 	decder.Decode(&msg)
+	charData.Class = msg.Value //TODO chekc valid choice
 
-	//roll stats
-	//display stats
-	//reroll if desired
+	for {
+		//roll stats
+		stats := RollStats()
+
+		//display stats
+		encder.Encode(NewMessageWithStats(stats))
+
+		//reroll if desired
+		decder.Decode(&msg)
+		if msg.Value != "reroll" {
+			charData.SetStats(stats)
+			break
+		}
+	}
 
 	//when accepted save to xml file.
 	saveCharacterFile(&charData)
 
 	//save the password file
+	UpdatePasswordFile(charData.Name, password, "world1")
+}
+
+func RollStats() []int {
+	stats := make([]int, 0, 6)
+
+	for index, _ := range stats {
+		stats[index] = RollD6() + RollD6() + RollD6()
+	}
+
+	return stats
+}
+
+func RollD6() int {
+	return rand.Intn(6) + 1
+}
+
+func readServerList() {
+	servers = make(map[string]string)
+	file, err := os.Open("serverConfig/serverList.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		readData := strings.Fields(scanner.Text())
+		fmt.Println(readData[0], " ", readData[1])
+		servers[readData[0]] = readData[1]
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func setUpServerWithAddress(addr string) *net.TCPListener {

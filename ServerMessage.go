@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/daviddengcn/go-colortext"
 	"strings"
 )
 
@@ -42,6 +43,20 @@ func newMessageWithRaces() ServerMessage {
 
 func newMessageWithClasses() ServerMessage {
 	return newServerMessageS(fmt.Sprintf("\t%10s\t%s", "Fighter", "Wizard"))
+}
+
+func NewMessageWithStats(stats []int) ServerMessage {
+	fsc := newFormattedStringCollection()
+
+	fsc.addMessage(ct.Green, "Stats\n-----------------------------------------\n")
+	fsc.addMessage2(fmt.Sprintf("\tStrength: %2d", stats[0]))
+	fsc.addMessage2(fmt.Sprintf("\tConstitution: %2d", stats[1]))
+	fsc.addMessage2(fmt.Sprintf("\tDexterity: %2d", stats[2]))
+	fsc.addMessage2(fmt.Sprintf("\tWisdom: %2d", stats[3]))
+	fsc.addMessage2(fmt.Sprintf("\tCharisma: %2d", stats[4]))
+	fsc.addMessage2(fmt.Sprintf("\tInteligence: %d2\n", stats[5]))
+
+	return newServerMessageFS(fsc.fmtedStrings)
 }
 
 func (msg *ServerMessage) getMessage() string {
