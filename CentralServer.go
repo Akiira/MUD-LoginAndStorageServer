@@ -19,22 +19,6 @@ const (
 	SRVER_NAME = 1
 )
 
-//type CentralServer struct {
-//	servers         map[string]string
-//	fileSystemMutex sync.Mutex
-//	passwordPath    string
-//}
-
-//func (cs *CentralServer) LoadS
-
-//func (cs *CentralServer) StartClientServer() {
-
-//}
-
-//func (cs *CentralServer) StartCharacterServer() {
-
-//}
-
 var servers map[string]string
 var fileSystemMutex sync.Mutex
 var passwordPath string = "Characters/Passwords/"
@@ -50,8 +34,20 @@ func main() {
 
 	readServerList()
 	go runCharacterServer()
-
+	go RunNewCharacterServer()
 	runClientServer()
+}
+
+func RunNewCharacterServer() {
+	listener := setUpServerWithAddress(servers["newChar"])
+	fmt.Println("\tNew Character Server up.")
+	for {
+		conn, err := listener.Accept()
+		checkError(err)
+		fmt.Println("\tNewConnection in NewCharServer")
+		CreateNewCharacter(gob.NewEncoder(conn), gob.NewDecoder(conn))
+		conn.Close()
+	}
 }
 
 func runCharacterServer() {
@@ -198,6 +194,8 @@ func UpdatePasswordFile(name, password, world string) {
 
 	_, err = pwFile.Write([]byte(password + " " + world))
 	checkError(err)
+
+	fmt.Println("Password file for ", name, " updated.breakSignal")
 }
 
 func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
@@ -210,24 +208,33 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 
 	for {
 		//ask for name
-		encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
-		decder.Decode(&msg)
+		err := encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
+		checkErrorWithMessage(err, "Send msg for name for adventurer in CreateNewChar.")
+		err = decder.Decode(&msg)
+		checkErrorWithMessage(err, "Reading name for adventurer in CreateNewChar.")
 		charData.Name = msg.Value
 
 		//check name is not taken
 		if !CharacterExists(msg.getUsername()) {
 			break
+		} else {
+			err := encder.Encode(newServerMessageS("That name is already taken.\n"))
+			checkErrorWithMessage(err, "Send msg for name already exists.")
 		}
 	}
 
 	//ask for password
-	encder.Encode(newServerMessageS("Enter a password.\n"))
-	decder.Decode(&msg)
+	err := encder.Encode(newServerMessageS("Enter a password.\n"))
+	checkError(err)
+	err = decder.Decode(&msg)
+	checkError(err)
 	password := msg.Value
 
 	//display races
-	encder.Encode(newMessageWithRaces())
-	decder.Decode(&msg)
+	err = encder.Encode(newMessageWithRaces())
+	checkError(err)
+	err = decder.Decode(&msg)
+	checkError(err)
 	charData.Race = msg.Value //TODO chekc valid choice
 
 	//display classes
@@ -250,15 +257,16 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 		}
 	}
 
-	//when accepted save to xml file.
+	//save the password and character file
+	UpdatePasswordFile(charData.Name, password, "world1")
 	saveCharacterFile(&charData)
 
-	//save the password file
-	UpdatePasswordFile(charData.Name, password, "world1")
+	encder.Encode(newServerMessageTypeS(EXIT, "Your character was created succesfully."+
+		"You will now be redidrected to the login server. Press 'done' to continue.\n"))
 }
 
 func RollStats() []int {
-	stats := make([]int, 0, 6)
+	stats := make([]int, 6)
 
 	for index, _ := range stats {
 		stats[index] = RollD6() + RollD6() + RollD6()
