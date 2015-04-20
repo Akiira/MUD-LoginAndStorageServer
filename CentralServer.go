@@ -7,19 +7,24 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strings"
+	"sync"
 )
 
 const (
-	PASSWORD = 0
-	ADDRESS  = 1
+	PASSWORD   = 0
+	SRVER_NAME = 1
 )
 
 var servers map[string]string
+var fileSystemMutex sync.Mutex
+var passwordPath string = "Characters/Passwords/"
 
 func main() {
+
 	gob.Register(WeaponXML{})
 	gob.Register(ArmourXML{})
 	gob.Register(ArmourSetXML{})
@@ -29,8 +34,20 @@ func main() {
 
 	readServerList()
 	go runCharacterServer()
-
+	go RunNewCharacterServer()
 	runClientServer()
+}
+
+func RunNewCharacterServer() {
+	listener := setUpServerWithAddress(servers["newChar"])
+	fmt.Println("\tNew Character Server up.")
+	for {
+		conn, err := listener.Accept()
+		checkError(err)
+		fmt.Println("\tNewConnection in NewCharServer")
+		CreateNewCharacter(gob.NewEncoder(conn), gob.NewDecoder(conn))
+		conn.Close()
+	}
 }
 
 func runCharacterServer() {
@@ -45,18 +62,19 @@ func runCharacterServer() {
 			var msg ServerMessage
 			gobDecoder := gob.NewDecoder(conn)
 			gobEncoder := gob.NewEncoder(conn)
+
 			err := gobDecoder.Decode(&msg)
 			checkError(err)
 
 			if msg.MsgType == GETFILE {
-				charXML := getCharacterXMLFromFile(msg.getMessage())
-				fmt.Println("Sending char: ", *charXML)
+				charXML := GetCharacterXML(msg.getMessage())
 				err = gobEncoder.Encode(*charXML)
 				checkError(err)
 			} else {
 				var char CharacterXML
 				err := gobDecoder.Decode(&char)
 				checkError(err)
+
 				saveCharacterFile(&char)
 			}
 
@@ -79,17 +97,42 @@ func runClientServer() {
 	}
 }
 
-func getCharacterXMLFromFile(charName string) *CharacterXML {
+func HandleLoginClient(myConn net.Conn) {
+	var clientsMsg ClientMessage
+	var servMsg ServerMessage
+	defer myConn.Close()
 
+	err := gob.NewDecoder(myConn).Decode(&clientsMsg)
+	checkError(err)
+
+	if CharacterExists(clientsMsg.getUsername()) {
+		if GetCharactersPassword(clientsMsg.getUsername()) == clientsMsg.getPassword() {
+			servMsg = newServerMessageTypeS(REDIRECT, GetCharactersWorld(clientsMsg.getUsername()))
+		} else {
+			servMsg = newServerMessageTypeS(ERROR, "Incorrect password, closing connection.")
+		}
+	} else {
+		servMsg = newServerMessageTypeS(ERROR, "Character does not exist, closing connection.")
+	}
+
+	fmt.Println("\tSending message: ", servMsg.Value, ", ", servMsg.MsgType)
+	err = gob.NewEncoder(myConn).Encode(servMsg)
+	checkError(err)
+}
+
+func GetCharacterXML(charName string) *CharacterXML {
 	fmt.Println("looking for : " + charName)
 	xmlFile, err := os.Open("Characters/" + charName + ".xml")
 	checkError(err)
+	defer xmlFile.Close()
 
-	XMLdata, _ := ioutil.ReadAll(xmlFile)
+	XMLdata, err := ioutil.ReadAll(xmlFile)
+	checkError(err)
 
 	var charData CharacterXML
-	xml.Unmarshal(XMLdata, &charData)
-	xmlFile.Close()
+	err = xml.Unmarshal(XMLdata, &charData)
+	checkError(err)
+
 	return &charData
 }
 
@@ -100,67 +143,140 @@ func saveCharacterFile(char *CharacterXML) {
 	defer file.Close()
 
 	enc := xml.NewEncoder(file)
-	enc.Indent(" ", " ")
+	enc.Indent(" ", "\t")
 
 	err = enc.Encode(char)
 	checkError(err)
 
-	currentWorld := char.CurrentWorld
-
-	readPassFile, err := os.Open("Characters/Passwords/" + char.Name + ".txt")
-	checkError(err)
-
-	reader := bufio.NewReader(readPassFile)
-	line, _, err := reader.ReadLine()
-	s := strings.Split(string(line), " ")
-	pass := s[PASSWORD]
-	readPassFile.Close()
-
-	fmt.Println(pass + " : " + currentWorld)
-
-	passfile, err := os.Create("Characters/Passwords/" + char.Name + ".txt")
-	checkError(err)
-	writer := bufio.NewWriter(passfile)
-	_, err = writer.WriteString(pass + " " + currentWorld)
-	checkError(err)
-	writer.Flush()
-	passfile.Close()
-
+	UpdatePasswordFile(char.Name, GetCharactersPassword(char.Name), char.CurrentWorld)
 }
 
-func HandleLoginClient(myConn net.Conn) {
-	var clientResponse ClientMessage
+func GetCharactersPassword(name string) (password string) {
+	pwFile, err := os.Open(passwordPath + name + ".txt")
+	checkErrorWithMessage(err, "Failed to open password file for: "+name)
+	defer pwFile.Close()
 
-	err := gob.NewDecoder(myConn).Decode(&clientResponse)
+	reader := bufio.NewReader(pwFile)
+	line, _, err := reader.ReadLine()
 	checkError(err)
+	pwAndWorld := strings.Split(string(line), " ")
 
-	if _, err := os.Stat("Characters/Passwords/" + clientResponse.getUsername() + ".txt"); err == nil {
-		file, err := os.Open("Characters/Passwords/" + clientResponse.getUsername() + ".txt")
-		checkError(err)
+	return pwAndWorld[PASSWORD]
+}
 
-		reader := bufio.NewReader(file)
+func GetCharactersWorld(name string) string {
+	pwFile, err := os.Open(passwordPath + name + ".txt")
+	checkErrorWithMessage(err, "Failed to open password file to get world id for character: "+name)
+	defer pwFile.Close()
 
-		line, _, err := reader.ReadLine()
+	reader := bufio.NewReader(pwFile)
+	line, _, err := reader.ReadLine()
+	checkError(err)
+	pwAndWorld := strings.Split(string(line), " ")
 
-		s := strings.Split(string(line), " ")
+	return servers[pwAndWorld[SRVER_NAME]]
+}
 
-		file.Close()
-
-		if s[PASSWORD] == clientResponse.getPassword() {
-			newAddress := servers[s[ADDRESS]]
-			gob.NewEncoder(myConn).Encode(newServerMessageTypeS(REDIRECT, newAddress))
-		} else {
-			//TODO
-			//Incorrect password
-			fmt.Println("\tERROR: incorrect password")
-		}
+func CharacterExists(name string) (found bool) {
+	if _, err := os.Stat("Characters/" + name + ".xml"); err != nil {
+		found = false
 	} else {
-		//TODO
-		//Character not found
-		fmt.Println("\tERROR: character not found")
+		found = true
 	}
 
-	myConn.Close()
+	return found
+}
+
+func UpdatePasswordFile(name, password, world string) {
+	pwFile, err := os.Create(passwordPath + name + ".txt")
+	checkErrorWithMessage(err, "Failed to create password file for: "+name)
+	defer pwFile.Close()
+
+	_, err = pwFile.Write([]byte(password + " " + world))
+	checkError(err)
+
+	fmt.Println("Password file for ", name, " updated.breakSignal")
+}
+
+func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
+	fileSystemMutex.Lock()
+	defer fileSystemMutex.Unlock()
+
+	var msg ClientMessage
+	var charData CharacterXML
+	charData.SetToDefaultValues()
+
+	for {
+		//ask for name
+		err := encder.Encode(newServerMessageS("Enter a name for your adventurer.\n"))
+		checkErrorWithMessage(err, "Send msg for name for adventurer in CreateNewChar.")
+		err = decder.Decode(&msg)
+		checkErrorWithMessage(err, "Reading name for adventurer in CreateNewChar.")
+		charData.Name = msg.Value
+
+		//check name is not taken
+		if !CharacterExists(msg.getUsername()) {
+			break
+		} else {
+			err := encder.Encode(newServerMessageS("That name is already taken.\n"))
+			checkErrorWithMessage(err, "Send msg for name already exists.")
+		}
+	}
+
+	//ask for password
+	err := encder.Encode(newServerMessageS("Enter a password.\n"))
+	checkError(err)
+	err = decder.Decode(&msg)
+	checkError(err)
+	password := msg.Value
+
+	//display races
+	err = encder.Encode(newMessageWithRaces())
+	checkError(err)
+	err = decder.Decode(&msg)
+	checkError(err)
+	charData.Race = msg.Value //TODO chekc valid choice
+
+	//display classes
+	encder.Encode(newMessageWithClasses())
+	decder.Decode(&msg)
+	charData.Class = msg.Value //TODO chekc valid choice
+
+	for {
+		//roll stats
+		stats := RollStats()
+
+		//display stats
+		encder.Encode(NewMessageWithStats(stats))
+
+		//reroll if desired
+		decder.Decode(&msg)
+		if msg.Value != "reroll" {
+			charData.SetStats(stats)
+			break
+		}
+	}
+
+	//save the password and character file
+	UpdatePasswordFile(charData.Name, password, "world1")
+	saveCharacterFile(&charData)
+
+	encder.Encode(newServerMessageTypeS(EXIT, "Your character was created succesfully."+
+		"You will now be redidrected to the login server. Press 'done' to continue.\n"))
+}
+
+func RollStats() []int {
+	stats := make([]int, 6)
+
+	for index, _ := range stats {
+		stats[index] = RollD6() + RollD6() + RollD6()
+	}
+
+	return stats
+}
+
+func RollD6() int {
+	return rand.Intn(6) + 1
 }
 
 func readServerList() {
@@ -189,6 +305,14 @@ func setUpServerWithAddress(addr string) *net.TCPListener {
 	listener, err := net.ListenTCP("tcp", tcpAddr)
 	checkError(err)
 	return listener
+}
+
+func checkErrorWithMessage(err error, msg string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal error: %s\n", err.Error())
+		fmt.Println(msg)
+		os.Exit(1)
+	}
 }
 
 func checkError(err error) {
