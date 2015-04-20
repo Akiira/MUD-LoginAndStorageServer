@@ -35,7 +35,25 @@ func main() {
 	readServerList()
 	go runCharacterServer()
 	go RunNewCharacterServer()
-	runClientServer()
+	go runClientServer()
+	NewGetInputFromUser()
+}
+
+func NewGetInputFromUser() {
+
+	var input string
+	for {
+
+		_, err := fmt.Scan(&input)
+		checkError(err)
+		input = strings.TrimSpace(input)
+
+		if input == "exit" {
+			os.Exit(1)
+		} else if input == "refreshserver" {
+			readServerList()
+		}
+	}
 }
 
 func RunNewCharacterServer() {
