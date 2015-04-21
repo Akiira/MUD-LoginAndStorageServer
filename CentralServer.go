@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"encoding/xml"
 	"fmt"
+	"github.com/daviddengcn/go-colortext"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -36,10 +38,52 @@ func main() {
 	go runCharacterServer()
 	go RunNewCharacterServer()
 	go runClientServer()
-	NewGetInputFromUser()
+	go heartbeatPing()
+	getInputFromUser()
 }
 
-func NewGetInputFromUser() {
+func heartbeatPing() {
+	//TODO put logic to check status of each server
+
+	for {
+		for name, address := range servers {
+
+			if name == "central" || name == "characterStorage" || name == "newChar" {
+				continue
+			} else {
+
+				conn, err := net.Dial("tcp", address)
+				//checkError(err)
+				encoder := gob.NewEncoder(conn)
+				decoder := gob.NewDecoder(conn)
+
+				if err != nil {
+					fmt.Println("error: cannot connect " + name + "\n")
+				} else {
+					var clientMsg ClientMessage
+					clientMsg.Command = "heartbeat"
+					encoder.Encode(clientMsg)
+					var serverRes ServerMessage
+					decoder.Decode(&serverRes)
+					printFormatedOutput(serverRes.Value)
+				}
+			}
+
+		}
+
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func printFormatedOutput(output []FormattedString) {
+	for _, element := range output {
+		ct.ChangeColor(element.Color, false, ct.Black, false)
+		fmt.Print(element.Value)
+	}
+	ct.ResetColor()
+}
+
+func getInputFromUser() {
 
 	var input string
 	for {
@@ -52,8 +96,42 @@ func NewGetInputFromUser() {
 			os.Exit(1)
 		} else if input == "refreshserver" {
 			readServerList()
+			updateServerListToServers()
 		}
 	}
+}
+
+func updateServerListToServers() {
+
+	var clientMsg ClientMessage
+	var output string
+	for name, address := range servers {
+		output += name + " " + address + "\n"
+	}
+
+	for name, address := range servers {
+
+		if name == "central" || name == "characterStorage" || name == "newChar" {
+			continue
+		} else {
+
+			conn, err := net.Dial("tcp", address)
+			//checkError(err)
+			encoder := gob.NewEncoder(conn)
+
+			if err != nil {
+				fmt.Println("error: cannot connect " + name + "\n")
+			} else {
+
+				clientMsg.Command = "refreshserver"
+				clientMsg.Value = output
+				encoder.Encode(clientMsg)
+			}
+
+			conn.Close()
+		}
+	}
+
 }
 
 func RunNewCharacterServer() {
@@ -336,6 +414,6 @@ func checkErrorWithMessage(err error, msg string) {
 func checkError(err error) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-		os.Exit(1)
+		//os.Exit(1)
 	}
 }
