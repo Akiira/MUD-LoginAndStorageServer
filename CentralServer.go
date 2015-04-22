@@ -39,7 +39,7 @@ func main() {
 	go runCharacterServer()
 	go RunNewCharacterServer()
 	go runClientServer()
-	go RunHeartbeat()
+	go PeriodicHeartbeat()
 	getInputFromUser()
 }
 
@@ -51,14 +51,16 @@ func PeriodicHeartbeat() {
 }
 
 func RunHeartbeat() {
-	//TODO put logic to check status of each server
 
 	for name, address := range worldServers {
 		err := GetHeartbeat(address)
 
 		if err != nil {
 			fmt.Println("error: cannot connect " + name + "\n")
+			//TODO here we could add code to try and restart that world server or somthing.
 			continue
+		} else {
+			fmt.Println("Heartbeat received from: ", name)
 		}
 	}
 }
