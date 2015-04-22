@@ -21,9 +21,12 @@ const (
 	SRVER_NAME = 1
 )
 
-var servers map[string]string
-var fileSystemMutex sync.Mutex
-var passwordPath string = "Characters/Passwords/"
+var (
+	servers         map[string]string = make(map[string]string)
+	worldServers    map[string]string = make(map[string]string)
+	passwordPath    string            = "Characters/Passwords/"
+	fileSystemMutex sync.Mutex
+)
 
 func main() {
 
@@ -32,47 +35,46 @@ func main() {
 	gob.Register(ArmourSetXML{})
 	gob.Register(ItemXML{})
 
-	servers = make(map[string]string)
-
 	readServerList()
 	go runCharacterServer()
 	go RunNewCharacterServer()
 	go runClientServer()
-	go heartbeatPing()
+	go RunHeartbeat()
 	getInputFromUser()
 }
 
-func heartbeatPing() {
-	//TODO put logic to check status of each server
-
+func PeriodicHeartbeat() {
 	for {
-		for name, address := range servers {
-
-			if name == "central" || name == "characterStorage" || name == "newChar" {
-				continue
-			} else {
-
-				conn, err := net.Dial("tcp", address)
-				//checkError(err)
-				encoder := gob.NewEncoder(conn)
-				decoder := gob.NewDecoder(conn)
-
-				if err != nil {
-					fmt.Println("error: cannot connect " + name + "\n")
-				} else {
-					var clientMsg ClientMessage
-					clientMsg.Command = "heartbeat"
-					encoder.Encode(clientMsg)
-					var serverRes ServerMessage
-					decoder.Decode(&serverRes)
-					printFormatedOutput(serverRes.Value)
-				}
-			}
-
-		}
-
+		RunHeartbeat()
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func RunHeartbeat() {
+	//TODO put logic to check status of each server
+
+	for name, address := range worldServers {
+		err := GetHeartbeat(address)
+
+		if err != nil {
+			fmt.Println("error: cannot connect " + name + "\n")
+			continue
+		}
+	}
+}
+
+func GetHeartbeat(serverAddress string) error {
+	conn, err := net.Dial("tcp", serverAddress)
+	if err != nil {
+		return err
+	}
+
+	err = gob.NewEncoder(conn).Encode(ClientMessage{Command: "heartbeat"})
+	if err != nil {
+		return err
+	}
+
+	return gob.NewDecoder(conn).Decode(&ServerMessage{})
 }
 
 func printFormatedOutput(output []FormattedString) {
@@ -388,6 +390,10 @@ func readServerList() {
 		readData := strings.Fields(scanner.Text())
 		fmt.Println(readData[0], " ", readData[1])
 		servers[readData[0]] = readData[1]
+
+		if strings.HasPrefix(readData[0], "world") {
+			worldServers[readData[0]] = readData[1]
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
