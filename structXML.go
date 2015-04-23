@@ -119,7 +119,7 @@ func (c *InventoryXML) UnmarshalXML(d *xml.Decoder, start xml.StartElement) erro
 			}
 
 			err = d.DecodeElement(item, &t1)
-			checkError(err)
+			checkError(err, false)
 			c.Items = append(c.Items, item)
 		}
 

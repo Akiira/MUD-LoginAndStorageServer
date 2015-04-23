@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"encoding/xml"
 	"fmt"
-	"github.com/daviddengcn/go-colortext"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -36,12 +35,14 @@ func main() {
 	gob.Register(ItemXML{})
 
 	readServerList()
-	go runCharacterServer()
+	go RunStorageServer()
 	go RunNewCharacterServer()
-	go runClientServer()
+	go RunLoginServer()
 	go PeriodicHeartbeat()
 	getInputFromUser()
 }
+
+// =======  HEART BEAT FUNCTIONS
 
 func PeriodicHeartbeat() {
 	for {
@@ -79,21 +80,13 @@ func GetHeartbeat(serverAddress string) error {
 	return gob.NewDecoder(conn).Decode(&ServerMessage{})
 }
 
-func printFormatedOutput(output []FormattedString) {
-	for _, element := range output {
-		ct.ChangeColor(element.Color, false, ct.Black, false)
-		fmt.Print(element.Value)
-	}
-	ct.ResetColor()
-}
-
 func getInputFromUser() {
 
 	var input string
 	for {
 
 		_, err := fmt.Scan(&input)
-		checkError(err)
+		checkError(err, false)
 		input = strings.TrimSpace(input)
 
 		if input == "exit" {
@@ -105,12 +98,45 @@ func getInputFromUser() {
 	}
 }
 
+// =======  SERVER FUNCTIONS
+
+func readServerList() {
+	servers = make(map[string]string)
+	file, err := os.Open("serverConfig/serverList.txt")
+	if err != nil {
+		log.Fatal(err, false)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		readData := strings.Fields(scanner.Text())
+		fmt.Println(readData[0], " ", readData[1])
+		servers[readData[0]] = readData[1]
+
+		if strings.HasPrefix(readData[0], "world") {
+			worldServers[readData[0]] = readData[1]
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err, false)
+	}
+}
+
+func setUpServerWithAddress(addr string) *net.TCPListener {
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
+	checkError(err, false)
+	listener, err := net.ListenTCP("tcp", tcpAddr)
+	checkError(err, false)
+	return listener
+}
+
 func updateServerListToServers() {
 
-	var clientMsg ClientMessage
-	var output string
+	var updatedAddresses string
 	for name, address := range servers {
-		output += name + " " + address + "\n"
+		updatedAddresses += name + " " + address + "\n"
 	}
 
 	for name, address := range servers {
@@ -120,90 +146,87 @@ func updateServerListToServers() {
 		} else {
 
 			conn, err := net.Dial("tcp", address)
-			//checkError(err)
+			checkError(err, false)
 			encoder := gob.NewEncoder(conn)
 
 			if err != nil {
 				fmt.Println("error: cannot connect " + name + "\n")
 			} else {
-
-				clientMsg.Command = "refreshserver"
-				clientMsg.Value = output
-				encoder.Encode(clientMsg)
+				encoder.Encode(newClientMessage("refreshserver", updatedAddresses))
 			}
 
-			conn.Close()
+			err = conn.Close()
+			checkError(err, false)
 		}
 	}
 
 }
 
-func RunNewCharacterServer() {
-	listener := setUpServerWithAddress(servers["newChar"])
-	fmt.Println("\tNew Character Server up.")
-	for {
-		conn, err := listener.Accept()
-		checkError(err)
-		fmt.Println("\tNewConnection in NewCharServer")
-		CreateNewCharacter(gob.NewEncoder(conn), gob.NewDecoder(conn))
-		conn.Close()
-	}
-}
-
-func runCharacterServer() {
+func RunStorageServer() {
 	listener := setUpServerWithAddress(servers["characterStorage"])
-	fmt.Println("\tCharacter Server: i'm waiting")
+	fmt.Println("Storage Server: i'm waiting")
 
 	for {
 		conn, err := listener.Accept()
-		checkError(err)
-		if err == nil {
-			fmt.Println("\tCharacter Server:Connection established")
-			var msg ServerMessage
-			gobDecoder := gob.NewDecoder(conn)
-			gobEncoder := gob.NewEncoder(conn)
-
-			err := gobDecoder.Decode(&msg)
-			checkError(err)
-
-			if msg.MsgType == GETFILE {
-				charXML := GetCharacterXML(msg.getMessage())
-				err = gobEncoder.Encode(*charXML)
-				checkError(err)
-			} else {
-				var char CharacterXML
-				err := gobDecoder.Decode(&char)
-				checkError(err)
-
-				saveCharacterFile(&char)
-			}
-
-			conn.Close()
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
+
+		fmt.Println("Storage Server:Connection established")
+		HandleStorageConnection(conn)
+	}
+	fmt.Println("Storage Server: i'm shutting down")
+}
+
+func HandleStorageConnection(conn net.Conn) {
+	fileSystemMutex.Lock()
+	defer fileSystemMutex.Unlock()
+	defer conn.Close()
+
+	gobDecoder := gob.NewDecoder(conn)
+
+	var msg ServerMessage
+	err := gobDecoder.Decode(&msg)
+	checkError(err, false)
+
+	if msg.MsgType == GETFILE {
+		charXML := GetCharacterXML(msg.getMessage())
+		err = gob.NewEncoder(conn).Encode(*charXML)
+		checkError(err, false)
+	} else {
+		var char CharacterXML
+		err := gobDecoder.Decode(&char)
+		checkError(err, false)
+		SaveCharacterData(&char)
 	}
 }
 
-func runClientServer() {
+func RunLoginServer() {
 	listener := setUpServerWithAddress(servers["central"])
+	fmt.Println("Login Server: i'm waiting")
 
 	for {
-		fmt.Println("Client Server: i'm waiting")
 		conn, err := listener.Accept()
-		checkError(err)
+		checkError(err, false)
 		if err == nil {
-			fmt.Println("Client Server:Connection established")
-			go HandleLoginClient(conn)
+			fmt.Println("Login Server:Connection established")
+			go HandleLogin(conn)
 		}
 	}
+	fmt.Println("Login Server: i'm shutting down")
 }
 
-func HandleLoginClient(myConn net.Conn) {
-	var clientsMsg ClientMessage
-	var servMsg ServerMessage
+func HandleLogin(myConn net.Conn) {
+	fileSystemMutex.Lock()
+	defer fileSystemMutex.Unlock()
 	defer myConn.Close()
 
+	var clientsMsg ClientMessage
+	var servMsg ServerMessage
+
 	err := gob.NewDecoder(myConn).Decode(&clientsMsg)
-	checkError(err)
+	checkError(err, false)
 
 	if CharacterExists(clientsMsg.getUsername()) {
 		if GetCharactersPassword(clientsMsg.getUsername()) == clientsMsg.getPassword() {
@@ -215,38 +238,51 @@ func HandleLoginClient(myConn net.Conn) {
 		servMsg = newServerMessageTypeS(ERROR, "Character does not exist, closing connection.")
 	}
 
-	fmt.Println("\tSending message: ", servMsg.Value, ", ", servMsg.MsgType)
 	err = gob.NewEncoder(myConn).Encode(servMsg)
-	checkError(err)
+	checkError(err, false)
 }
+
+func RunNewCharacterServer() {
+	listener := setUpServerWithAddress(servers["newChar"])
+	fmt.Println("New Character Server up.")
+	for {
+		conn, err := listener.Accept()
+		checkError(err, false)
+		fmt.Println("NewConnection in NewCharServer")
+		CreateNewCharacter(gob.NewEncoder(conn), gob.NewDecoder(conn))
+		conn.Close()
+	}
+}
+
+// =======  CHARACTER STORAGE AND VALIDATION FUNCTIONS
 
 func GetCharacterXML(charName string) *CharacterXML {
 	fmt.Println("looking for : " + charName)
 	xmlFile, err := os.Open("Characters/" + charName + ".xml")
-	checkError(err)
+	checkError(err, false)
 	defer xmlFile.Close()
 
 	XMLdata, err := ioutil.ReadAll(xmlFile)
-	checkError(err)
+	checkError(err, false)
 
 	var charData CharacterXML
 	err = xml.Unmarshal(XMLdata, &charData)
-	checkError(err)
+	checkError(err, false)
 
 	return &charData
 }
 
-func saveCharacterFile(char *CharacterXML) {
+func SaveCharacterData(char *CharacterXML) {
 	fmt.Println("Saving char: ", char)
 	file, err := os.Create("Characters/" + char.Name + ".xml")
-	checkError(err)
+	checkError(err, false)
 	defer file.Close()
 
 	enc := xml.NewEncoder(file)
 	enc.Indent(" ", "\t")
 
 	err = enc.Encode(char)
-	checkError(err)
+	checkError(err, false)
 
 	UpdatePasswordFile(char.Name, GetCharactersPassword(char.Name), char.CurrentWorld)
 }
@@ -258,7 +294,7 @@ func GetCharactersPassword(name string) (password string) {
 
 	reader := bufio.NewReader(pwFile)
 	line, _, err := reader.ReadLine()
-	checkError(err)
+	checkError(err, false)
 	pwAndWorld := strings.Split(string(line), " ")
 
 	return pwAndWorld[PASSWORD]
@@ -271,7 +307,7 @@ func GetCharactersWorld(name string) string {
 
 	reader := bufio.NewReader(pwFile)
 	line, _, err := reader.ReadLine()
-	checkError(err)
+	checkError(err, false)
 	pwAndWorld := strings.Split(string(line), " ")
 
 	return servers[pwAndWorld[SRVER_NAME]]
@@ -288,15 +324,18 @@ func CharacterExists(name string) (found bool) {
 }
 
 func UpdatePasswordFile(name, password, world string) {
+
 	pwFile, err := os.Create(passwordPath + name + ".txt")
 	checkErrorWithMessage(err, "Failed to create password file for: "+name)
 	defer pwFile.Close()
 
 	_, err = pwFile.Write([]byte(password + " " + world))
-	checkError(err)
+	checkError(err, false)
 
-	fmt.Println("Password file for ", name, " updated.breakSignal")
+	fmt.Println("Password file for ", name, " updated.")
 }
+
+// =======  CHARACTER CREATION FUNCTIONS
 
 func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 	fileSystemMutex.Lock()
@@ -325,16 +364,16 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 
 	//ask for password
 	err := encder.Encode(newServerMessageS("Enter a password.\n"))
-	checkError(err)
+	checkError(err, false)
 	err = decder.Decode(&msg)
-	checkError(err)
+	checkError(err, false)
 	password := msg.Value
 
 	//display races
 	err = encder.Encode(newMessageWithRaces())
-	checkError(err)
+	checkError(err, false)
 	err = decder.Decode(&msg)
-	checkError(err)
+	checkError(err, false)
 	charData.Race = msg.Value //TODO chekc valid choice
 
 	//display classes
@@ -359,7 +398,7 @@ func CreateNewCharacter(encder *gob.Encoder, decder *gob.Decoder) {
 
 	//save the password and character file
 	UpdatePasswordFile(charData.Name, password, "world1")
-	saveCharacterFile(&charData)
+	SaveCharacterData(&charData)
 
 	encder.Encode(newServerMessageTypeS(EXIT, "Your character was created succesfully."+
 		"You will now be redidrected to the login server. Press 'done' to continue.\n"))
@@ -379,37 +418,7 @@ func RollD6() int {
 	return rand.Intn(6) + 1
 }
 
-func readServerList() {
-	servers = make(map[string]string)
-	file, err := os.Open("serverConfig/serverList.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		readData := strings.Fields(scanner.Text())
-		fmt.Println(readData[0], " ", readData[1])
-		servers[readData[0]] = readData[1]
-
-		if strings.HasPrefix(readData[0], "world") {
-			worldServers[readData[0]] = readData[1]
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func setUpServerWithAddress(addr string) *net.TCPListener {
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
-	checkError(err)
-	listener, err := net.ListenTCP("tcp", tcpAddr)
-	checkError(err)
-	return listener
-}
+// =======  ERROR CHECKING FUNCTIONS
 
 func checkErrorWithMessage(err error, msg string) {
 	if err != nil {
@@ -419,9 +428,12 @@ func checkErrorWithMessage(err error, msg string) {
 	}
 }
 
-func checkError(err error) {
+func checkError(err error, exit bool) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %s", err.Error())
-		//os.Exit(1)
+
+		if exit {
+			os.Exit(1)
+		}
 	}
 }
