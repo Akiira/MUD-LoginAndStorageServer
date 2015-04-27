@@ -1,5 +1,5 @@
 central :6600
 characterStorage :6601
-newChar :6601
+newChar :6602
 world1 :6701
 world2 :6702
