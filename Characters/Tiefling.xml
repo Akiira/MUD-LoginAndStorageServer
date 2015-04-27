@@ -1,6 +1,6 @@
  <Character>
  	<Name>Tiefling</Name>
- 	<RoomIN>1000</RoomIN>
+ 	<RoomIN>2007</RoomIN>
  	<HitPoints>77</HitPoints>
  	<Race></Race>
  	<Class></Class>
@@ -13,7 +13,7 @@
  	<Level>1</Level>
  	<Experience>0</Experience>
  	<Gold>0</Gold>
- 	<CurrentWorld>world1</CurrentWorld>
+ 	<CurrentWorld>world2</CurrentWorld>
  	<!--Equipped Weapon-->
  	<Weapon>
  		<Item>
@@ -29,23 +29,13 @@
  	<ArmourSet>
  		<Armour>
  			<Item>
- 				<Name>Old Boots</Name>
- 				<Description>Tattered old boots</Description>
- 				<Level>1</Level>
- 				<Worth>2</Worth>
- 			</Item>
- 			<Defense>1</Defense>
- 			<Location>Feet</Location>
- 		</Armour>
- 		<Armour>
- 			<Item>
  				<Name>Silly Hat</Name>
  				<Description>A large hat with many colors</Description>
  				<Level>1</Level>
  				<Worth>2</Worth>
  			</Item>
  			<Defense>1</Defense>
- 			<Location>Head</Location>
+ 			<Location>head</Location>
  		</Armour>
  		<Armour>
  			<Item>
@@ -55,10 +45,36 @@
  				<Worth>2</Worth>
  			</Item>
  			<Defense>1</Defense>
- 			<Location>Legs</Location>
+ 			<Location>legs</Location>
+ 		</Armour>
+ 		<Armour>
+ 			<Item>
+ 				<Name>Old Boots</Name>
+ 				<Description>Tattered old boots</Description>
+ 				<Level>1</Level>
+ 				<Worth>2</Worth>
+ 			</Item>
+ 			<Defense>1</Defense>
+ 			<Location>feet</Location>
  		</Armour>
  	</ArmourSet>
  	<Inventory>
+ 		<Armour>
+ 			<Item>
+ 				<Name>Old Boots</Name>
+ 				<Description>Tattered old boots</Description>
+ 				<Level>1</Level>
+ 				<Worth>2</Worth>
+ 			</Item>
+ 			<Defense>1</Defense>
+ 			<Location>feet</Location>
+ 		</Armour>
+ 		<Item>
+ 			<Name>Lantern</Name>
+ 			<Description>A sturdy copper lantern</Description>
+ 			<Level>1</Level>
+ 			<Worth>5</Worth>
+ 		</Item>
  		<Weapon>
  			<Item>
  				<Name>Short Sword</Name>
@@ -78,7 +94,7 @@
  				<Worth>2</Worth>
  			</Item>
  			<Defense>1</Defense>
- 			<Location>Head</Location>
+ 			<Location>head</Location>
  		</Armour>
  		<Armour>
  			<Item>
@@ -88,23 +104,7 @@
  				<Worth>2</Worth>
  			</Item>
  			<Defense>1</Defense>
- 			<Location>Legs</Location>
+ 			<Location>legs</Location>
  		</Armour>
- 		<Armour>
- 			<Item>
- 				<Name>Old Boots</Name>
- 				<Description>Tattered old boots</Description>
- 				<Level>1</Level>
- 				<Worth>2</Worth>
- 			</Item>
- 			<Defense>1</Defense>
- 			<Location>Feet</Location>
- 		</Armour>
- 		<Item>
- 			<Name>Lantern</Name>
- 			<Description>A sturdy copper lantern</Description>
- 			<Level>1</Level>
- 			<Worth>5</Worth>
- 		</Item>
  	</Inventory>
  </Character>

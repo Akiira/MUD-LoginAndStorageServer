@@ -1,5 +1,5 @@
-central 127.0.0.1:1200
-characterStorage 127.0.0.1:1201
-newChar 127.0.0.1:1202
-world1 127.0.0.1:1300
-world2 127.0.0.1:1400
+central :6600
+characterStorage :6601
+newChar :6601
+world1 :6701
+world2 :6702
