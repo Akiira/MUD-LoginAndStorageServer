@@ -245,6 +245,7 @@ func HandleLogin(myConn net.Conn) {
 func RunNewCharacterServer() {
 	listener := setUpServerWithAddress(servers["newChar"])
 	fmt.Println("New Character Server up.")
+
 	for {
 		conn, err := listener.Accept()
 		checkError(err, false)
