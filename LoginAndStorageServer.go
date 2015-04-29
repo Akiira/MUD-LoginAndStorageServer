@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +35,9 @@ func main() {
 	gob.Register(ArmourSetXML{})
 	gob.Register(ItemXML{})
 
+	runtime.GOMAXPROCS(4)
 	readServerList()
+
 	go RunStorageServer()
 	go RunNewCharacterServer()
 	go RunLoginServer()
@@ -93,7 +96,7 @@ func getInputFromUser() {
 			os.Exit(1)
 		} else if input == "refreshserver" {
 			readServerList()
-			updateServerListToServers()
+			UpdateServerList()
 		}
 	}
 }
@@ -124,7 +127,7 @@ func readServerList() {
 	}
 }
 
-func setUpServerWithAddress(addr string) *net.TCPListener {
+func SetupServer(addr string) *net.TCPListener {
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", addr)
 	checkError(err, false)
 	listener, err := net.ListenTCP("tcp", tcpAddr)
@@ -132,7 +135,7 @@ func setUpServerWithAddress(addr string) *net.TCPListener {
 	return listener
 }
 
-func updateServerListToServers() {
+func UpdateServerList() {
 
 	var updatedAddresses string
 	for name, address := range servers {
@@ -163,7 +166,7 @@ func updateServerListToServers() {
 }
 
 func RunStorageServer() {
-	listener := setUpServerWithAddress(servers["characterStorage"])
+	listener := SetupServer(servers["characterStorage"])
 	fmt.Println("Storage Server: i'm waiting")
 
 	for {
@@ -203,7 +206,7 @@ func HandleStorageConnection(conn net.Conn) {
 }
 
 func RunLoginServer() {
-	listener := setUpServerWithAddress(servers["central"])
+	listener := SetupServer(servers["central"])
 	fmt.Println("Login Server: i'm waiting")
 
 	for {
@@ -243,7 +246,7 @@ func HandleLogin(myConn net.Conn) {
 }
 
 func RunNewCharacterServer() {
-	listener := setUpServerWithAddress(servers["newChar"])
+	listener := SetupServer(servers["newChar"])
 	fmt.Println("New Character Server up.")
 
 	for {
